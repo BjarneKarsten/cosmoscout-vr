@@ -350,7 +350,7 @@ bool Stars::Do() {
       mStarShader.InitFragmentShaderFromString(defines + cStarsSnippets + cStarsFragOnePixel);
     } else {
       mStarShader.InitVertexShaderFromString(defines + cStarsSnippets + cStarsVert);
-      mStarShader.InitGeometryShaderFromString(defines + cStarsSnippets + cStarsGeom);
+      //mStarShader.InitGeometryShaderFromString(defines + cStarsSnippets + cStarsGeom);
       mStarShader.InitFragmentShaderFromString(defines + cStarsSnippets + cStarsFrag);
     }
 
@@ -470,7 +470,8 @@ bool Stars::Do() {
   glUniformMatrix4fv(mUniforms.starInverseMVMatrix, 1, GL_FALSE, matInverseMV.GetData());
   glUniformMatrix4fv(mUniforms.starInversePMatrix, 1, GL_FALSE, matInverseP.GetData());
 
-  glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(mStars.size()));
+  //glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(mStars.size()*3));
+  glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(mStars.size()));
 
   mStarTexture->Unbind(GL_TEXTURE0);
 
@@ -761,6 +762,14 @@ void Stars::buildStarVAO() {
   mStarVAO.EnableAttributeArray(3);
   mStarVAO.SpecifyAttributeArrayFloat(
       3, 1, GL_FLOAT, GL_FALSE, iElementCount * sizeof(float), 6 * sizeof(float), &mStarVBO);
+
+  mStarVAO.Bind();
+  glVertexBindingDivisor(0, 1);
+  glVertexBindingDivisor(1, 1);
+  glVertexBindingDivisor(2, 1);
+  glVertexBindingDivisor(3, 1);
+  mStarVAO.Release();
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

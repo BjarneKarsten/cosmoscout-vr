@@ -49,21 +49,30 @@ vec3 Uncharted2Tonemap(vec3 x) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const char* Stars::cStarsVert = R"(
+#line 52
 // inputs
 layout(location = 0) in vec2  inDir;
 layout(location = 1) in float inDist;
 layout(location = 2) in vec3  inColor;
 layout(location = 3) in float inAbsMagnitude;
                                                                             
-// uniforms
+// uniforms for out matrices
 uniform mat4 uMatMV;
 uniform mat4 uInvMV;
+uniform mat4 uMatP;
 
-// outputs
-out vec3  vColor;
-out float vMagnitude;
+// uniforms used to define colors
+uniform float uSolidAngle;
+uniform float uMinMagnitude;
+uniform float uMaxMagnitude;
+
+// outputs passed to the fragment shader
+out vec3  iColor;
+out float iMagnitude;
+out vec2  iTexcoords;
 
 void main() {
+    // Cartesian star position in world space
     vec3 starPos = vec3(
         cos(inDir.x) * cos(inDir.y) * inDist,
         sin(inDir.x) * inDist,
@@ -72,56 +81,29 @@ void main() {
     const float parsecToMeter = 3.08567758e16;
     vec3 observerPos = (uInvMV * vec4(0, 0, 0, 1) / parsecToMeter).xyz;
 
-    vMagnitude = getApparentMagnitude(inAbsMagnitude, length(starPos-observerPos));
-    vColor = inColor;
+    iMagnitude = getApparentMagnitude(inAbsMagnitude, length(starPos - observerPos));
 
-    gl_Position = uMatMV * vec4(starPos*parsecToMeter, 1);
-}
+    //Projected camera space
+    vec4 tmp_Position = uMatMV * vec4(starPos * parsecToMeter, 1);
 
-)";
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const char* Stars::cStarsGeom = R"(
-layout(points) in;
-layout(triangle_strip, max_vertices = 4) out;
-
-// inputs
-in vec3  vColor[];
-in float vMagnitude[];
-
-// uniforms
-uniform mat4  uMatP;
-uniform float uSolidAngle;
-uniform float uMinMagnitude;
-uniform float uMaxMagnitude;
-
-// outputs
-out vec3  iColor;
-out float iMagnitude;
-out vec2  iTexcoords;
-
-void main() {
-    iColor = SRGBtoLINEAR(vColor[0]);
-
-    iMagnitude = vMagnitude[0];
-
-    if (iMagnitude > uMaxMagnitude || iMagnitude < uMinMagnitude) {
-        return;
-    }
-
-    float dist = length(gl_in[0].gl_Position.xyz);
+    float dist = length(tmp_Position.xyz);
     vec3 y = vec3(0, 1, 0);
-    vec3 z = gl_in[0].gl_Position.xyz / dist;
+    vec3 z = tmp_Position.xyz / dist;
     vec3 x = normalize(cross(z, y));
     y = normalize(cross(z, x));
 
-    const float yo[2] = float[2](0.5, -0.5);
-    const float xo[2] = float[2](0.5, -0.5);
+    vec3 _offsets[4];
+    
+    _offsets[0] = vec3(-0.5, -0.5, 0.0);
+    _offsets[1] = vec3(-0.5,  0.5, 0.0);
+    _offsets[2] = vec3( 0.5, -0.5, 0.0);
+    _offsets[3] = vec3( 0.5,  0.5, 0.0);
 
     const float PI = 3.14159265359;
     float diameter = 2 * sqrt(1 - pow(1-uSolidAngle/(2*PI), 2.0));
     float scale = dist * diameter;
+
+    iColor = SRGBtoLINEAR(inColor);
 
     #ifdef DRAWMODE_SCALED_DISC
         scale *= 1.0 - (iMagnitude - uMinMagnitude) / (uMaxMagnitude - uMinMagnitude);
@@ -139,20 +121,11 @@ void main() {
         scale *= 10.0;
     #endif
 
-    for(int j=0; j!=2; ++j) {
-        for(int i=0; i!=2; ++i) {
-            iTexcoords = vec2(xo[i], yo[j])*2;
+    iTexcoords  = _offsets[gl_VertexID].xy * 2;
+    vec3 pos = tmp_Position.xyz + scale * _offsets[gl_VertexID]; 
 
-            vec3 pos = gl_in[0].gl_Position.xyz + (xo[i] * x + yo[j] * y) * scale;
-
-            gl_Position = uMatP * vec4(pos, 1);
-
-            EmitVertex();
-        }
-    }
-    EndPrimitive();
+    gl_Position = uMatP * vec4(pos, 1);
 }
-
 )";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
