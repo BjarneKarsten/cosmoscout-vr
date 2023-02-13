@@ -47,14 +47,15 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   /// @param sFrameName       The SPICE reference frame of the targets location.
   /// @param positionControl  The vector listing the control points for the movement together with
   ///                         corresponding real world time stamps.
-  /// @param lookAtControl    The vector listing the control points for where the camera should 
+  /// @param directionControl The vector listing the control points for where the camera should 
   ///                         point, together with corresponding real world time stamps.
   /// @param upControl        The vector listing up vectors together with corresponding time stamps.
   /// @param dSimulationTime  The current time of the simulation in Barycentric Dynamical Time.
   /// @param dRealStartTime   The time in the real world, when the animation should start, in TDB.    
   void moveTo(std::string const& sCenterName, std::string const& sFrameName, 
-      std::vector<struct timedVector> positionControl, std::vector<struct timedVector> lookAtControl, 
-      std::vector<struct timedVector> upControl, double dSimulationTime, double dRealStartTime);
+      std::vector<struct timedVector> positionControl, 
+      std::vector<struct timedVector> directionControl, std::vector<struct timedVector> upControl, 
+      double dSimulationTime, double dRealStartTime);
 
   /// Gradually moves the observer's position and rotation from their current values to the given
   /// values.
@@ -77,7 +78,7 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   utils::AnimatedValue<glm::dvec3> mAnimatedPosition;
   utils::AnimatedValue<glm::dquat> mAnimatedRotation;
   tinyspline::BSpline positionSpline;
-  tinyspline::BSpline lookAtSpline;
+  tinyspline::BSpline directionSpline;
   tinyspline::BSpline upSpline;
   
   double dRealEndTime;
