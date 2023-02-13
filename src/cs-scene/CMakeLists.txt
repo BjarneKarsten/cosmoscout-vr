@@ -20,6 +20,7 @@ add_library(cs-scene SHARED
 target_link_libraries(cs-scene
   PUBLIC
     cs-utils
+    tinyspline::tinyspline
 )
 
 if(COSMOSCOUT_USE_PRECOMPILED_HEADERS)
