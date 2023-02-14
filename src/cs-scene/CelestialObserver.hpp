@@ -30,6 +30,9 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   /// Updates position and rotation according to the last moveTo call.
   virtual void updateMovementAnimation(double tTime);
 
+  /// Returns a time between startTime and endTime, such that it eases in and out.
+  double easeInOut(double tTime, double startTime, double endTime);
+
   /// These are overidden here because they are ignored if any animation done by MoveTo is in
   /// progress.
   void setPosition(glm::dvec3 vPos) override;
@@ -47,14 +50,14 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   /// @param sFrameName       The SPICE reference frame of the targets location.
   /// @param positionControl  The vector listing the control points for the movement together with
   ///                         corresponding real world time stamps.
-  /// @param directionControl The vector listing the control points for where the camera should 
+  /// @param lookAtControl    The vector listing the control points towards which the camera should 
   ///                         point, together with corresponding real world time stamps.
   /// @param upControl        The vector listing up vectors together with corresponding time stamps.
   /// @param dSimulationTime  The current time of the simulation in Barycentric Dynamical Time.
   /// @param dRealStartTime   The time in the real world, when the animation should start, in TDB.    
   void moveTo(std::string const& sCenterName, std::string const& sFrameName, 
       std::vector<struct timedVector> positionControl, 
-      std::vector<struct timedVector> directionControl, std::vector<struct timedVector> upControl, 
+      std::vector<struct timedVector> lookAtControl, std::vector<struct timedVector> upControl, 
       double dSimulationTime, double dRealStartTime);
 
   /// Gradually moves the observer's position and rotation from their current values to the given
@@ -78,10 +81,17 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   utils::AnimatedValue<glm::dvec3> mAnimatedPosition;
   utils::AnimatedValue<glm::dquat> mAnimatedRotation;
   tinyspline::BSpline positionSpline;
-  tinyspline::BSpline directionSpline;
+  tinyspline::BSpline lookAtSpline;
   tinyspline::BSpline upSpline;
   
-  double dRealEndTime;
+  double startTime;
+  double endTime;
+  double posStartTime;
+  double posEndTime;
+  double lAStartTime;
+  double lAEndTime;
+  double upStartTime;
+  double upEndTime;
   bool mAnimationInProgress = false;
 };
 } // namespace cs::scene
