@@ -226,7 +226,7 @@ void SolarSystem::update() {
   double simulationTime(mTimeControl->pSimulationTime.get());
   double realTime(
       utils::convert::time::toSpice(boost::posix_time::microsec_clock::universal_time()));
-  mObserver.updateMovementAnimation(realTime);
+  mObserver.updateMovementAnimation(realTime, pCurrentObserverSpeed.get());
 
   // First, update all celestial object positions.
   for (auto const& [name, object] : mSettings->mObjects) {

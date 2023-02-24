@@ -42,5 +42,6 @@
 *.sublime*
 .vscode
 .idea
+*.py
 
 *.nfs*

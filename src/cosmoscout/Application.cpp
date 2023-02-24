@@ -1357,13 +1357,13 @@ void Application::registerGuiCallbacks() {
 
             if (loc.mRotation.has_value() && loc.mPosition.has_value()) {
               mSolarSystem->flyObserverTo(loc.mCenter, loc.mFrame, loc.mPosition.value(),
-                  loc.mRotation.value(), duration.value_or(5.0));
+                  loc.mRotation.value(), duration.value_or(10.0));
             } else if (loc.mPosition.has_value()) {
               mSolarSystem->flyObserverTo(
-                  loc.mCenter, loc.mFrame, loc.mPosition.value(), duration.value_or(5.0));
+                  loc.mCenter, loc.mFrame, loc.mPosition.value(), duration.value_or(10.0));
               return;
             } else {
-              mSolarSystem->flyObserverTo(loc.mCenter, loc.mFrame, duration.value_or(5.0));
+              mSolarSystem->flyObserverTo(loc.mCenter, loc.mFrame, duration.value_or(10.0));
             }
 
           } else {

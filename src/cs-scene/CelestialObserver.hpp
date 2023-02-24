@@ -13,7 +13,6 @@
 #include <vector>
 #include <tinysplinecxx.h>
 
-
 namespace cs::scene {
 
 /// The CelestialObserver represents the camera in the scene. It provides methods for moving the
@@ -28,7 +27,7 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   struct timedVector;
 
   /// Updates position and rotation according to the last moveTo call.
-  virtual void updateMovementAnimation(double tTime);
+  virtual void updateMovementAnimation(double tTime, double speed);
 
   /// Returns a time between startTime and endTime, such that it eases in and out.
   double easeInOut(double tTime, double startTime, double endTime);
@@ -93,6 +92,8 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   double upStartTime;
   double upEndTime;
   bool mAnimationInProgress = false;
+
+
 };
 } // namespace cs::scene
 
