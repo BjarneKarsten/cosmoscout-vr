@@ -24,7 +24,13 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
       std::string const&                        FrameName   = "J2000");
 
   /// A glm vector and a corresponding time stamp in the real world, in TDB.
-  struct timedVector;
+  struct timedVector {
+    double time;
+    glm::dvec3 vec;
+  } typedef timedVector;
+
+  /// stores the type of animation cuurently played
+  enum {none, animatedValue, spline} animationType = none;
 
   /// Updates position and rotation according to the last moveTo call.
   virtual void updateMovementAnimation(double tTime, double speed);
@@ -54,9 +60,9 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   /// @param upControl        The vector listing up vectors together with corresponding time stamps.
   /// @param dSimulationTime  The current time of the simulation in Barycentric Dynamical Time.
   /// @param dRealStartTime   The time in the real world, when the animation should start, in TDB.    
-  void moveTo(std::string const& sCenterName, std::string const& sFrameName, 
-      std::vector<struct timedVector> positionControl, 
-      std::vector<struct timedVector> lookAtControl, std::vector<struct timedVector> upControl, 
+  void moveToSpline(std::string const& sCenterName, std::string const& sFrameName, 
+      std::vector<timedVector> positionControl, 
+      std::vector<timedVector> lookAtControl, std::vector<timedVector> upControl, 
       double dSimulationTime, double dRealStartTime);
 
   /// Gradually moves the observer's position and rotation from their current values to the given
@@ -85,15 +91,6 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   
   double startTime;
   double endTime;
-  double posStartTime;
-  double posEndTime;
-  double lAStartTime;
-  double lAEndTime;
-  double upStartTime;
-  double upEndTime;
-  bool mAnimationInProgress = false;
-
-
 };
 } // namespace cs::scene
 
