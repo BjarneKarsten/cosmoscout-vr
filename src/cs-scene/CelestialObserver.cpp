@@ -115,7 +115,6 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
   endTime = std::max(std::max(positionControl.back().time, lookAtControl.back().time), 
     upControl.back().time) + dRealStartTime;
   startTime = dRealStartTime;
-  logger().info("endTime: {}", endTime);
 
   // Perform no animation at all if end time is not greater than start time.
   if (startTime >= endTime) {
@@ -131,10 +130,11 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
     cs::scene::CelestialAnchor target(sCenterName, sFrameName);
 
     try {
-      glm::dvec3 actPos = target.getRelativePosition(dSimulationTime, 
+      cs::scene::CelestialObject origin("Solar System Barycenter", "J2000");
+      glm::dvec3 actPos = origin.getRelativePosition(dSimulationTime, 
         cs::scene::CelestialObject(getCenterName(), getFrameName()));
-      glm::dvec3 startPos = target.getRelativePosition(dSimulationTime, *this);
-      glm::dquat startRot = target.getRelativeRotation(dSimulationTime, *this);
+      glm::dvec3 startPos = origin.getRelativePosition(dSimulationTime, *this);
+      glm::dquat startRot = origin.getRelativeRotation(dSimulationTime, *this);
       glm::dvec3 startLookAt = (glm::mat4_cast(startRot) 
         * glm::dvec4(0,0,-glm::length(startPos - actPos) * 100,0)).xyz() + startPos;
       glm::dvec3 startUp = (glm::mat4_cast(startRot) * glm::dvec4(0,1,0,0)).xyz();
@@ -143,8 +143,8 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
       f << "\t\"startLA\" : [" << startLookAt.x << ", " << startLookAt.y << ", " << startLookAt.z << "],\n"
         << "\t\"lookats\" : [\n";
       f.close();
-      setCenterName(sCenterName);
-      setFrameName(sFrameName);
+      setCenterName("Solar System Barycenter");
+      setFrameName("J2000");
 
       /*double cosTheta = glm::dot(startRot, rotation);
 

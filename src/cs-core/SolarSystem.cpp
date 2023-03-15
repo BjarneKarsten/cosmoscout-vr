@@ -511,23 +511,25 @@ void SolarSystem::flyObserverTo(
 
   cs::scene::CelestialObject target(sCenter, sFrame);
   cs::scene::CelestialObject active = *pActiveObject.get();
-  glm::dvec3 startPos = target.getRelativePosition(dSimulationTime, mObserver);
-  glm::dquat startRot = target.getRelativeRotation(dSimulationTime, mObserver);
-  glm::dvec3 actPos = target.getRelativePosition(dSimulationTime, active);
+  cs::scene::CelestialObject origin("Solar System Barycenter", "J2000");
+  glm::dvec3 startPos = origin.getRelativePosition(dSimulationTime, mObserver);
+  glm::dquat startRot = origin.getRelativeRotation(dSimulationTime, mObserver);
+  glm::dvec3 targetPos = origin.getRelativePosition(dSimulationTime + duration, target);
+  glm::dvec3 actPos = origin.getRelativePosition(dSimulationTime, active);
   glm::dvec3 radii = target.getRadii();
 
   if(!mObserver.isBehind(target, active, dSimulationTime, 1.55)) {
     double angleAct = std::acos(glm::dot(startRot * glm::dvec3(0,0,-1), glm::normalize(actPos - startPos)));
-    double angleTarget = std::acos(glm::dot(startRot * glm::dvec3(0,0,-1), glm::normalize(-startPos)));
+    double angleTarget = std::acos(glm::dot(startRot * glm::dvec3(0,0,-1), glm::normalize(targetPos - startPos)));
     // Case 1: pointing closer to start than to target and not behind starting planet
     if(angleAct < angleTarget) {
       logger().info("case 1");
       if(actPos == startPos) {
         mObserver.setPosition(glm::dvec3(1,0,0) + actPos);
-        startPos = target.getRelativePosition(dSimulationTime, mObserver);
+        startPos = origin.getRelativePosition(dSimulationTime, mObserver);
       }
       glm::dvec3 ctrl1 = glm::normalize(startPos - actPos) * glm::length(actPos) * 1.2 + startPos;
-      glm::dvec3 endPos = glm::normalize(ctrl1) * 3.0 * radii[0];
+      glm::dvec3 endPos = glm::normalize(ctrl1 - targetPos) * 3.0 * radii[0] + targetPos;
       glm::dvec3 ctrl0 = glm::mix(startPos, ctrl1, 0.2);
       glm::dvec3 ctrl0_1 = glm::mix(startPos, ctrl0, 0.5);
       glm::dvec3 ctrl2 = glm::mix(ctrl1, endPos, 0.8);
@@ -564,11 +566,14 @@ void SolarSystem::flyObserverTo(
       glm::dvec3 lctrl1 = glm::normalize(glm::cross(glm::cross(ctrl2, startPos), ctrl2)) * (0.1
         * glm::length(startPos));
 
-      lA.push_back(cs::scene::CelestialObserver::timedVector{0.15 * (dRealEndTime - dRealStartTime), actPos});
+      lA.push_back(cs::scene::CelestialObserver::timedVector{0.15 * (dRealEndTime - dRealStartTime),
+        actPos});
       //lA.push_back(timedVector{0.4 * (dRealEndTime - dRealStartTime), lctrl0/*glm::mix(actPos, endLA, 0.05)*/});
-      lA.push_back(cs::scene::CelestialObserver::timedVector{0.5 * (dRealEndTime - dRealStartTime), 0.5*actPos});
+      lA.push_back(cs::scene::CelestialObserver::timedVector{0.5 * (dRealEndTime - dRealStartTime), 
+        0.5*(actPos + targetPos)});
       //lA.push_back(timedVector{0.55 * (dRealEndTime - dRealStartTime), lctrl1/*glm::mix(actPos, endLA, 0.95)*/});
-      lA.push_back(cs::scene::CelestialObserver::timedVector{0.7 * (dRealEndTime - dRealStartTime), glm::dvec3(0,0,0)});
+      lA.push_back(cs::scene::CelestialObserver::timedVector{0.7 * (dRealEndTime - dRealStartTime), 
+        targetPos});
       //lA.push_back(timedVector{(dRealEndTime - dRealStartTime), endLA});
 
       f.open("lookat.json");
