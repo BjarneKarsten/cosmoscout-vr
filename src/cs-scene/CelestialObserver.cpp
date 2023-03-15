@@ -65,8 +65,8 @@ double CelestialObserver::easeInOut(double tTime, double startTime, double endTi
   double t = (tTime - startTime) / (endTime - startTime);
   double progress;
   if(t < 0) progress = 0.0;
-  else if(t < 0.5) progress = std::pow(1.74113 * t, 5);
-  else if(t <= 1) progress = std::pow(1.74113 * t - 1.74113, 5) + 1;
+  else if(t < 0.5) progress = 16 * std::pow(t, 5);
+  else if(t <= 1) progress = 16 * std::pow(t-1, 5) + 1;
   else progress = 1.0;
   return progress * (endTime - startTime);// + startTime;
 }
@@ -158,10 +158,6 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
       setPosition(startPos);
 
       std::vector<tinyspline::real> positions;
-      positions.push_back(-(endTime - startTime));
-      positions.push_back(startPos.x);
-      positions.push_back(startPos.y);
-      positions.push_back(startPos.z);
       positions.push_back(0/*dRealStartTime*/);
       positions.push_back(startPos.x);
       positions.push_back(startPos.y);
@@ -172,10 +168,6 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
         positions.push_back(tv.vec.y);
         positions.push_back(tv.vec.z);
       }
-      positions.push_back(2*(endTime - startTime));
-      positions.push_back(positionControl.back().vec.x);
-      positions.push_back(positionControl.back().vec.y);
-      positions.push_back(positionControl.back().vec.z);
       positionSpline = tinyspline::BSpline::interpolateCubicNatural(positions, 4);
 
       std::vector<tinyspline::real> lookAts;
@@ -260,6 +252,25 @@ void CelestialObserver::moveTo(std::string const& sCenterName, std::string const
       logger().warn("CelestialObserver::moveTo failed: {}", e.what());
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool CelestialObserver::isBehind(cs::scene::CelestialObject frame, 
+    cs::scene::CelestialObject object, double dSimulationTime, double allowedRadii) {
+  glm::dvec3 objPos = frame.getRelativePosition(dSimulationTime, object);
+  glm::dvec3 obsPos = frame.getRelativePosition(dSimulationTime, *this);
+  if(glm::length(obsPos) < glm::length(objPos)) return false;
+  // arbitrary vector orthogonal to objPos:
+  glm::dvec3 p = glm::cross(objPos, glm::dvec3(1,0,0));
+  // p is null vector if objPos is parallel to (1,0,0), use (0,1,0) instead 
+  if(p.x == 0.0 && p.y == 0.0 && p.z == 0.0) {
+    p = glm::cross(objPos, glm::dvec3(0,1,0));
+  }
+  p = objPos + glm::normalize(p) * allowedRadii * object.getRadii()[0];
+  double alpha = std::acos(std::abs(glm::dot(glm::normalize(obsPos), glm::normalize(objPos))));
+  double beta = std::acos(std::abs(glm::dot(glm::normalize(p), glm::normalize(objPos))));
+  return alpha <= beta; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

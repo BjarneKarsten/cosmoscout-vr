@@ -10,6 +10,7 @@
 
 #include "../cs-utils/AnimatedValue.hpp"
 #include "CelestialAnchor.hpp"
+#include "CelestialObject.hpp"
 #include <vector>
 #include <tinysplinecxx.h>
 
@@ -78,6 +79,15 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   void moveTo(std::string const& sCenterName, std::string const& sFrameName,
       glm::dvec3 const& position, glm::dquat const& rotation, double dSimulationTime,
       double dRealStartTime, double dRealEndTime);
+
+  /// @return             true, if the observer is behind a given celestial object.
+  ///
+  /// @param frame        The celestial object in whose frame this shall be checked.
+  /// @param object       The celestial object to which the observer's position will be compared.
+  /// @param dSimulationTime  The current time of the simulation in Barycentric Dynamical Time.
+  /// @param allowedRadii The amount of radii behind which the observer may be.
+  bool isBehind(CelestialObject frame, CelestialObject object, double dSimulationTime,
+    double allowedRadii = 1.0);
 
   /// @return true, if the observer is currently being moved.
   bool isAnimationInProgress() const;

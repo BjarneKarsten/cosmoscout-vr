@@ -516,71 +516,77 @@ void SolarSystem::flyObserverTo(
   glm::dvec3 actPos = target.getRelativePosition(dSimulationTime, active);
   glm::dvec3 radii = target.getRadii();
 
-  // Case 1: in front of starting planet and pointing closer to target planet
-  if(glm::length(startPos) < glm::length(actPos)) {
-    logger().info("case 1");
-    glm::dvec3 z = glm::normalize(startPos);
-    glm::dvec3 x = -glm::normalize(glm::cross(z, startRot * glm::dvec3(0,1,0)));
-    glm::dvec3 y = glm::normalize(glm::cross(z, x));
-    mObserver.moveTo(sCenter, sFrame, glm::normalize(startPos) * 3.0 * radii[0], 
-      glm::quat_cast(glm::dmat3(x,y,z)), dSimulationTime, dRealStartTime, dRealEndTime);
-  }
-  else {
-    logger().info("case 2");
-    if(actPos == startPos) {
-      mObserver.setPosition(glm::dvec3(1,0,0) + actPos);
-      startPos = target.getRelativePosition(dSimulationTime, mObserver);
+  if(!mObserver.isBehind(target, active, dSimulationTime, 1.55)) {
+    double angleAct = std::acos(glm::dot(startRot * glm::dvec3(0,0,-1), glm::normalize(actPos - startPos)));
+    double angleTarget = std::acos(glm::dot(startRot * glm::dvec3(0,0,-1), glm::normalize(-startPos)));
+    // Case 1: pointing closer to start than to target and not behind starting planet
+    if(angleAct < angleTarget) {
+      logger().info("case 1");
+      if(actPos == startPos) {
+        mObserver.setPosition(glm::dvec3(1,0,0) + actPos);
+        startPos = target.getRelativePosition(dSimulationTime, mObserver);
+      }
+      glm::dvec3 ctrl1 = glm::normalize(startPos - actPos) * glm::length(actPos) * 1.2 + startPos;
+      glm::dvec3 endPos = glm::normalize(ctrl1) * 3.0 * radii[0];
+      glm::dvec3 ctrl0 = glm::mix(startPos, ctrl1, 0.2);
+      glm::dvec3 ctrl0_1 = glm::mix(startPos, ctrl0, 0.5);
+      glm::dvec3 ctrl2 = glm::mix(ctrl1, endPos, 0.8);
+      glm::dvec3 ctrl1_0 = glm::mix(ctrl1, glm::mix(startPos, endPos, 0.33), 0.65);
+      glm::dvec3 ctrl1_1 = glm::mix(ctrl1, glm::mix(startPos, endPos, 0.66), 0.65);
+      std::ofstream f;
+      f.open("plot3d.json");
+      f << "{\n\t\"ctrl0\" : [" << ctrl0.x    << ", " << ctrl0.y    << ", " << ctrl0.z    << "],\n"
+        <<    "\t\"ctrl0_1\" : [" << ctrl0_1.x << ", " << ctrl0_1.y << ", " << ctrl0_1.z  << "],\n"
+        <<    "\t\"ctrl1_0\" : [" << ctrl1_0.x << ", " << ctrl1_0.y << ", " << ctrl1_0.z  << "],\n"
+        <<    "\t\"ctrl1_1\" : [" << ctrl1_1.x << ", " << ctrl1_1.y << ", " << ctrl1_1.z  << "],\n"
+        <<    "\t\"ctrl2\" : [" << ctrl2.x    << ", " << ctrl2.y    << ", " << ctrl2.z    << "],\n"
+        //<<    "\t\"ctrl3\" : [" << ctrl3.x    << ", " << ctrl3.y    << ", " << ctrl3.z    << "],\n"
+        //<<    "\t\"ctrl4\" : [" << ctrl4.x    << ", " << ctrl4.y    << ", " << ctrl4.z    << "],\n"
+        <<    "\t\"start\" : [" << startPos.x << ", " << startPos.y << ", " << startPos.z << "],\n"
+        <<    "\t\"curve\" : [\n";
+      f.close();
+
+      std::vector<cs::scene::CelestialObserver::timedVector> pos;
+      pos.push_back(cs::scene::CelestialObserver::timedVector{/*dRealStartTime +*/ 0.3  * (dRealEndTime - dRealStartTime), ctrl0_1});
+      pos.push_back(cs::scene::CelestialObserver::timedVector{/*dRealStartTime +*/ 0.5  * (dRealEndTime - dRealStartTime), ctrl0});
+      //pos.push_back(cs::scene::CelestialObserver::timedVector{/*dRealStartTime +*/ 0.6  * (dRealEndTime - dRealStartTime), ctrl1_0});
+      pos.push_back(cs::scene::CelestialObserver::timedVector{/*dRealStartTime +*/ 0.65 * (dRealEndTime - dRealStartTime), ctrl1_1});
+      pos.push_back(cs::scene::CelestialObserver::timedVector{/*dRealStartTime +*/ 0.7  * (dRealEndTime - dRealStartTime), ctrl2});
+      pos.push_back(cs::scene::CelestialObserver::timedVector{dRealEndTime - dRealStartTime, endPos});
+
+      std::vector<cs::scene::CelestialObserver::timedVector> up;
+      glm::dvec3 upV = (glm::mat4_cast(startRot) * glm::dvec4(0,1,0,0)).xyz();
+      up.push_back(cs::scene::CelestialObserver::timedVector{dRealEndTime - dRealStartTime, upV});
+
+      std::vector<cs::scene::CelestialObserver::timedVector> lA;
+      glm::dvec3 lctrl0 = glm::normalize(glm::cross(glm::cross(ctrl0 - startPos, -startPos), 
+        ctrl0 - startPos)) * (0.1 * glm::length(startPos)) + startPos;
+      glm::dvec3 lctrl1 = glm::normalize(glm::cross(glm::cross(ctrl2, startPos), ctrl2)) * (0.1
+        * glm::length(startPos));
+
+      lA.push_back(cs::scene::CelestialObserver::timedVector{0.15 * (dRealEndTime - dRealStartTime), actPos});
+      //lA.push_back(timedVector{0.4 * (dRealEndTime - dRealStartTime), lctrl0/*glm::mix(actPos, endLA, 0.05)*/});
+      lA.push_back(cs::scene::CelestialObserver::timedVector{0.5 * (dRealEndTime - dRealStartTime), 0.5*actPos});
+      //lA.push_back(timedVector{0.55 * (dRealEndTime - dRealStartTime), lctrl1/*glm::mix(actPos, endLA, 0.95)*/});
+      lA.push_back(cs::scene::CelestialObserver::timedVector{0.7 * (dRealEndTime - dRealStartTime), glm::dvec3(0,0,0)});
+      //lA.push_back(timedVector{(dRealEndTime - dRealStartTime), endLA});
+
+      f.open("lookat.json");
+      f << "{\n\t\"lctrl0\" : [" << lctrl0.x << ", " << lctrl0.y << ", " << lctrl0.z << "],\n"
+        <<    "\t\"lctrl1\" : [" << lctrl1.x << ", " << lctrl1.y << ", " << lctrl1.z << "],\n";
+      f.close();
+
+      mObserver.moveToSpline(sCenter, sFrame, pos, lA, up, dSimulationTime, dRealStartTime);
     }
-    glm::dvec3 ctrl1 = glm::normalize(startPos - actPos) * glm::length(actPos) * 1.8 + startPos;
-    glm::dvec3 endPos = glm::normalize(ctrl1) * 3.0 * radii[0];
-    glm::dvec3 ctrl0 = glm::mix(startPos, ctrl1, 0.2);
-    glm::dvec3 ctrl0_1 = glm::mix(startPos, ctrl0, 0.5);
-    glm::dvec3 ctrl2 = glm::mix(ctrl1, endPos, 0.8);
-    glm::dvec3 ctrl1_0 = glm::mix(ctrl1, glm::mix(startPos, endPos, 0.33), 0.65);
-    glm::dvec3 ctrl1_1 = glm::mix(ctrl1, glm::mix(startPos, endPos, 0.66), 0.65);
-    std::ofstream f;
-    f.open("plot3d.json");
-    f << "{\n\t\"ctrl0\" : [" << ctrl0.x    << ", " << ctrl0.y    << ", " << ctrl0.z    << "],\n"
-      <<    "\t\"ctrl1_0\" : [" << ctrl1_0.x << ", " << ctrl1_0.y << ", " << ctrl1_0.z  << "],\n"
-      <<    "\t\"ctrl1_1\" : [" << ctrl1_1.x << ", " << ctrl1_1.y << ", " << ctrl1_1.z  << "],\n"
-      <<    "\t\"ctrl2\" : [" << ctrl2.x    << ", " << ctrl2.y    << ", " << ctrl2.z    << "],\n"
-      //<<    "\t\"ctrl3\" : [" << ctrl3.x    << ", " << ctrl3.y    << ", " << ctrl3.z    << "],\n"
-      //<<    "\t\"ctrl4\" : [" << ctrl4.x    << ", " << ctrl4.y    << ", " << ctrl4.z    << "],\n"
-      <<    "\t\"start\" : [" << startPos.x << ", " << startPos.y << ", " << startPos.z << "],\n"
-      <<    "\t\"curve\" : [\n";
-    f.close();
-
-    std::vector<cs::scene::CelestialObserver::timedVector> pos;
-    pos.push_back(cs::scene::CelestialObserver::timedVector{/*dRealStartTime +*/ 0.3 * (dRealEndTime - dRealStartTime), ctrl0_1});
-    pos.push_back(cs::scene::CelestialObserver::timedVector{/*dRealStartTime +*/ 0.5 * (dRealEndTime - dRealStartTime), ctrl0});
-    pos.push_back(cs::scene::CelestialObserver::timedVector{/*dRealStartTime +*/ 0.6 * (dRealEndTime - dRealStartTime), ctrl1_0});
-    pos.push_back(cs::scene::CelestialObserver::timedVector{/*dRealStartTime +*/ 0.65 * (dRealEndTime - dRealStartTime), ctrl1_1});
-    pos.push_back(cs::scene::CelestialObserver::timedVector{/*dRealStartTime +*/ 0.7 * (dRealEndTime - dRealStartTime), ctrl2});
-    pos.push_back(cs::scene::CelestialObserver::timedVector{dRealEndTime - dRealStartTime, endPos});
-
-    std::vector<cs::scene::CelestialObserver::timedVector> up;
-    glm::dvec3 upV = (glm::mat4_cast(startRot) * glm::dvec4(0,1,0,0)).xyz();
-    up.push_back(cs::scene::CelestialObserver::timedVector{dRealEndTime - dRealStartTime, upV});
-
-    std::vector<cs::scene::CelestialObserver::timedVector> lA;
-    glm::dvec3 lctrl0 = glm::normalize(glm::cross(glm::cross(ctrl0 - startPos, -startPos), 
-      ctrl0 - startPos)) * (0.1 * glm::length(startPos)) + startPos;
-    glm::dvec3 lctrl1 = glm::normalize(glm::cross(glm::cross(ctrl2, startPos), ctrl2)) * (0.1
-      * glm::length(startPos));
-
-    lA.push_back(cs::scene::CelestialObserver::timedVector{0.15 * (dRealEndTime - dRealStartTime), actPos});
-    //lA.push_back(timedVector{0.4 * (dRealEndTime - dRealStartTime), lctrl0/*glm::mix(actPos, endLA, 0.05)*/});
-    lA.push_back(cs::scene::CelestialObserver::timedVector{0.5 * (dRealEndTime - dRealStartTime), 0.5*actPos});
-    //lA.push_back(timedVector{0.55 * (dRealEndTime - dRealStartTime), lctrl1/*glm::mix(actPos, endLA, 0.95)*/});
-    lA.push_back(cs::scene::CelestialObserver::timedVector{0.7 * (dRealEndTime - dRealStartTime), glm::dvec3(0,0,0)});
-    //lA.push_back(timedVector{(dRealEndTime - dRealStartTime), endLA});
-
-    f.open("lookat.json");
-    f << "{\n\t\"lctrl0\" : [" << lctrl0.x << ", " << lctrl0.y << ", " << lctrl0.z << "],\n"
-      <<    "\t\"lctrl1\" : [" << lctrl1.x << ", " << lctrl1.y << ", " << lctrl1.z << "],\n";
-    f.close();
-
-    mObserver.moveToSpline(sCenter, sFrame, pos, lA, up, dSimulationTime, dRealStartTime);
+    // Case 2: pointing closer to target planet and not behind target planet
+    else {
+      logger().info("case 2");
+      glm::dvec3 z = glm::normalize(startPos);
+      glm::dvec3 x = -glm::normalize(glm::cross(z, startRot * glm::dvec3(0,1,0)));
+      glm::dvec3 y = glm::normalize(glm::cross(z, x));
+      mObserver.moveTo(sCenter, sFrame, glm::normalize(startPos) * 3.0 * radii[0], 
+        glm::quat_cast(glm::dmat3(x,y,z)), dSimulationTime, dRealStartTime, dRealEndTime);
+    }
   }
 }
 
