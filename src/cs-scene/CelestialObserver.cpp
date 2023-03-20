@@ -22,59 +22,59 @@ CelestialObserver::CelestialObserver(std::string const& sCenterName, std::string
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CelestialObserver::updateMovementAnimation(double tTime, double speed) {
-  if (animationType == spline) {
+void CelestialObserver::updateMovementAnimation(double tTime) {
+  if (mAnimationType == spline) {
     //logger().info(tTime);
     std::ofstream f;
     std::ofstream f2;
     f.open("plot3d.json", std::ios::out | std::ios::app);
     f2.open("lookat.json", std::ios::out | std::ios::app);
     //f2 << "\t\t" << speed << ",\n";
-    std::vector<tinyspline::real> pos = positionSpline.bisect(easeInOut(tTime - startTime, 0, endTime - startTime)).result();
+    std::vector<double> pos = mPositionSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 4)).result();
     mPosition = glm::dvec3(pos[1], pos[2], pos[3]); //mAnimatedPosition.get(tTime);
     f << "\t\t[" << mPosition.x << ", " << mPosition.y << ", " << mPosition.z << "],\n";
-    std::vector<tinyspline::real> lA = lookAtSpline.bisect(easeInOut(tTime - startTime, 0, endTime - startTime)).result();
+    std::vector<double> lA = mLookAtSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 2)).result();
     f2 << "\t\t[" << lA[1] << ", " << lA[2] << ", " << lA[3] << "],\n";
-    std::vector<tinyspline::real> up = upSpline.bisect(easeInOut(tTime - startTime, 0, endTime - startTime)).result();
+    std::vector<double> up = mUpSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 1)).result();
     glm::dvec3 z = -glm::normalize(glm::dvec3(lA[1], lA[2], lA[3]) - mPosition);
     glm::dvec3 x = -glm::normalize(glm::cross(z, glm::dvec3(up[1], up[2], up[3])));
     glm::dvec3 y = glm::normalize(glm::cross(z, x));
     mRotation = glm::quat_cast(glm::dmat3(x, y, z));
 
-    if (endTime < tTime) {
-      animationType = none;
+    if (mEndTime < tTime) {
+      mAnimationType = none;
       f  << "\t]\n}";
       f2 << "\t]\n}";
     }
     f.close();
     f2.close();
   }
-  else if(animationType == animatedValue) {
+  else if(mAnimationType == animatedValue) {
     mPosition = mAnimatedPosition.get(tTime);
     mRotation = mAnimatedRotation.get(tTime);
 
     if (mAnimatedPosition.mEndTime < tTime) {
-      animationType = none;
+      mAnimationType = none;
     }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-double CelestialObserver::easeInOut(double tTime, double startTime, double endTime) {
-  double t = (tTime - startTime) / (endTime - startTime);
+double CelestialObserver::easeInOut(double time, double duration, int steepness) {
+  double t = time / duration;
   double progress;
-  if(t < 0) progress = 0.0;
-  else if(t < 0.5) progress = 16 * std::pow(t, 5);
-  else if(t <= 1) progress = 16 * std::pow(t-1, 5) + 1;
+  if(t < 0.0) progress = 0.0;
+  else if(t < 0.5) progress = std::pow(2, steepness) * std::pow(t, steepness + 1);
+  else if(t <= 1.0) progress = std::pow(-2, steepness) * std::pow(t-1, steepness + 1) + 1.0;
   else progress = 1.0;
-  return progress * (endTime - startTime);// + startTime;
+  return progress * duration;// + mStartTime;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void CelestialObserver::setPosition(glm::dvec3 vPos) {
-  if (!animationType) {
+  if (!mAnimationType) {
     CelestialAnchor::setPosition(std::move(vPos));
   }
 }
@@ -82,7 +82,7 @@ void CelestialObserver::setPosition(glm::dvec3 vPos) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void CelestialObserver::setRotation(glm::dquat qRot) {
-  if (!animationType) {
+  if (!mAnimationType) {
     CelestialAnchor::setRotation(std::move(qRot));
   }
 }
@@ -91,7 +91,7 @@ void CelestialObserver::setRotation(glm::dquat qRot) {
 void CelestialObserver::changeOrigin(
     std::string sCenterName, std::string sFrameName, double dSimulationTime) {
 
-  animationType = none;
+  mAnimationType = none;
 
   cs::scene::CelestialAnchor target(sCenterName, sFrameName);
 
@@ -110,14 +110,14 @@ void CelestialObserver::changeOrigin(
 void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string const& sFrameName, 
     std::vector<timedVector> positionControl, std::vector<timedVector> lookAtControl,
     std::vector<timedVector> upControl, double dSimulationTime, double dRealStartTime) {
-  animationType = none;
+  mAnimationType = none;
 
-  endTime = std::max(std::max(positionControl.back().time, lookAtControl.back().time), 
+  mEndTime = std::max(std::max(positionControl.back().time, lookAtControl.back().time), 
     upControl.back().time) + dRealStartTime;
-  startTime = dRealStartTime;
+  mStartTime = dRealStartTime;
 
   // Perform no animation at all if end time is not greater than start time.
-  if (startTime >= endTime) {
+  if (mStartTime >= mEndTime) {
     setCenterName(sCenterName);
     setFrameName(sFrameName);
     glm::dvec3 z = -glm::normalize(lookAtControl.back().vec - positionControl.back().vec);
@@ -135,9 +135,9 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
         cs::scene::CelestialObject(getCenterName(), getFrameName()));
       glm::dvec3 startPos = origin.getRelativePosition(dSimulationTime, *this);
       glm::dquat startRot = origin.getRelativeRotation(dSimulationTime, *this);
-      glm::dvec3 startLookAt = (glm::mat4_cast(startRot) 
-        * glm::dvec4(0,0,-glm::length(startPos - actPos) * 100,0)).xyz() + startPos;
-      glm::dvec3 startUp = (glm::mat4_cast(startRot) * glm::dvec4(0,1,0,0)).xyz();
+      glm::dvec3 startLookAt = startPos + startRot * glm::dvec3(0,0,-glm::length(startPos - actPos)
+        * 100);
+      glm::dvec3 startUp = startRot * glm::dvec3(0,1,0);
       std::ofstream f;
       f.open("lookat.json", std::ios::out | std::ios::app);
       f << "\t\"startLA\" : [" << startLookAt.x << ", " << startLookAt.y << ", " << startLookAt.z << "],\n"
@@ -157,7 +157,11 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
       setRotation(startRot);
       setPosition(startPos);
 
-      std::vector<tinyspline::real> positions;
+      std::vector<double> positions;
+      /*positions.push_back(-0.5 * (mEndTime - mStartTime));
+      positions.push_back(actPos.x);
+      positions.push_back(actPos.y);
+      positions.push_back(actPos.z);*/
       positions.push_back(0/*dRealStartTime*/);
       positions.push_back(startPos.x);
       positions.push_back(startPos.y);
@@ -168,23 +172,22 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
         positions.push_back(tv.vec.y);
         positions.push_back(tv.vec.z);
       }
-      positionSpline = tinyspline::BSpline::interpolateCubicNatural(positions, 4);
+      mPositionSpline = tinyspline::BSpline::interpolateCubicNatural(positions, 4);
 
-      std::vector<tinyspline::real> lookAts;
+      std::vector<double> lookAts;
       lookAts.push_back(0/*dRealStartTime*/);
       lookAts.push_back(startLookAt.x);
       lookAts.push_back(startLookAt.y);
       lookAts.push_back(startLookAt.z);
       for(timedVector tv : lookAtControl) {
         lookAts.push_back(tv.time);
-        //tv.vec = glm::normalize(tv.vec);
         lookAts.push_back(tv.vec.x);
         lookAts.push_back(tv.vec.y);
         lookAts.push_back(tv.vec.z);
       }
-      lookAtSpline = tinyspline::BSpline::interpolateCatmullRom(lookAts, 4);
+      mLookAtSpline = tinyspline::BSpline::interpolateCatmullRom(lookAts, 4);
 
-      std::vector<tinyspline::real> ups;
+      std::vector<double> ups;
       ups.push_back(0/*dRealStartTime*/);
       ups.push_back(startUp.x);
       ups.push_back(startUp.y);
@@ -195,9 +198,9 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
         ups.push_back(tv.vec.y);
         ups.push_back(tv.vec.z);
       }
-      upSpline = tinyspline::BSpline::interpolateCubicNatural(ups, 4);
+      mUpSpline = tinyspline::BSpline::interpolateCubicNatural(ups, 4);
 
-      animationType = spline;
+      mAnimationType = spline;
     } catch (std::exception const& e) {
       // Getting the relative transformation may fail due to insufficient SPICE data.
       logger().warn("CelestialObserver::moveTo failed: {}", e.what());
@@ -210,7 +213,7 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
 void CelestialObserver::moveTo(std::string const& sCenterName, std::string const& sFrameName,
     glm::dvec3 const& position, glm::dquat const& rotation, double dSimulationTime,
     double dRealStartTime, double dRealEndTime) {
-  animationType = none;
+  mAnimationType = none;
 
   // Perform no animation at all if end time is not greater than start time.
   if (dRealStartTime >= dRealEndTime) {
@@ -246,7 +249,7 @@ void CelestialObserver::moveTo(std::string const& sCenterName, std::string const
       mAnimatedRotation = utils::AnimatedValue<glm::dquat>(
           startRot, rotation, dRealStartTime, dRealEndTime, utils::AnimationDirection::eInOut);
 
-      animationType = animatedValue;
+      mAnimationType = animatedValue;
     } catch (std::exception const& e) {
       // Getting the relative transformation may fail due to insufficient SPICE data.
       logger().warn("CelestialObserver::moveTo failed: {}", e.what());
@@ -276,7 +279,7 @@ bool CelestialObserver::isBehind(cs::scene::CelestialObject frame,
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool CelestialObserver::isAnimationInProgress() const {
-  return animationType;
+  return mAnimationType;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

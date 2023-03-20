@@ -31,13 +31,13 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   } typedef timedVector;
 
   /// stores the type of animation cuurently played
-  enum {none, animatedValue, spline} animationType = none;
+  enum {none, animatedValue, spline} mAnimationType = none;
 
   /// Updates position and rotation according to the last moveTo call.
-  virtual void updateMovementAnimation(double tTime, double speed);
+  virtual void updateMovementAnimation(double tTime);
 
-  /// Returns a time between startTime and endTime, such that it eases in and out.
-  double easeInOut(double tTime, double startTime, double endTime);
+  /// Returns a time between 0 and duration, such that it eases in and out.
+  double easeInOut(double time, double duration, int steepness);
 
   /// These are overidden here because they are ignored if any animation done by MoveTo is in
   /// progress.
@@ -95,12 +95,12 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
  protected:
   utils::AnimatedValue<glm::dvec3> mAnimatedPosition;
   utils::AnimatedValue<glm::dquat> mAnimatedRotation;
-  tinyspline::BSpline positionSpline;
-  tinyspline::BSpline lookAtSpline;
-  tinyspline::BSpline upSpline;
+  tinyspline::BSpline mPositionSpline;
+  tinyspline::BSpline mLookAtSpline;
+  tinyspline::BSpline mUpSpline;
   
-  double startTime;
-  double endTime;
+  double mStartTime;
+  double mEndTime;
 };
 } // namespace cs::scene
 
