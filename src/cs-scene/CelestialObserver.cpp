@@ -30,12 +30,12 @@ void CelestialObserver::updateMovementAnimation(double tTime) {
     f.open("plot3d.json", std::ios::out | std::ios::app);
     f2.open("lookat.json", std::ios::out | std::ios::app);
     //f2 << "\t\t" << speed << ",\n";
-    std::vector<double> pos = mPositionSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 4)).result();
+    std::vector<double> pos = mPositionSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 20)).result();
     mPosition = glm::dvec3(pos[1], pos[2], pos[3]); //mAnimatedPosition.get(tTime);
     f << "\t\t[" << mPosition.x << ", " << mPosition.y << ", " << mPosition.z << "],\n";
-    std::vector<double> lA = mLookAtSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 2)).result();
+    std::vector<double> lA = mLookAtSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 10)).result();
     f2 << "\t\t[" << lA[1] << ", " << lA[2] << ", " << lA[3] << "],\n";
-    std::vector<double> up = mUpSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 1)).result();
+    std::vector<double> up = mUpSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 5)).result();
     glm::dvec3 z = -glm::normalize(glm::dvec3(lA[1], lA[2], lA[3]) - mPosition);
     glm::dvec3 x = -glm::normalize(glm::cross(z, glm::dvec3(up[1], up[2], up[3])));
     glm::dvec3 y = glm::normalize(glm::cross(z, x));
@@ -62,11 +62,12 @@ void CelestialObserver::updateMovementAnimation(double tTime) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 double CelestialObserver::easeInOut(double time, double duration, int steepness) {
+  double a = steepness * 0.2;
   double t = time / duration;
   double progress;
   if(t < 0.0) progress = 0.0;
-  else if(t < 0.5) progress = std::pow(2, steepness) * std::pow(t, steepness + 1);
-  else if(t <= 1.0) progress = std::pow(-2, steepness) * std::pow(t-1, steepness + 1) + 1.0;
+  else if(t < 0.5) progress = std::pow(2, a) * std::pow(t, a + 1);
+  else if(t <= 1.0) progress = std::pow(-2, a) * std::pow(t-1, a + 1) + 1.0;
   else progress = 1.0;
   return progress * duration;// + mStartTime;
 }
