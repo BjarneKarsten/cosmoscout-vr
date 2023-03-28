@@ -70,7 +70,7 @@ AnchorLabel::AnchorLabel(std::string const&           name,
 
   mGuiItem->registerCallback(
       "flyToBody", "Makes the observer fly to the planet marked by this anchor label.", [this] {
-        mSolarSystem->flyObserverTo(mObject->getCenterName(), mObject->getFrameName(), 5.0);
+        mSolarSystem->flyObserverTo(mObject->getCenterName(), mObject->getFrameName(), 10.0);
         mGuiManager->showNotification("Travelling", "to " + mObject->getCenterName(), "send");
       });
 
