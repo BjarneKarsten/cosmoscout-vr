@@ -173,7 +173,8 @@ class CS_CORE_EXPORT SolarSystem {
       glm::dvec2 const& lngLat, double height, double duration);
 
   /// Gradually moves the observer's position and rotation from their current values to a
-  /// position in which the target object given by the SPICE frame center is in view.
+  /// position in which the target object given by the SPICE frame center is in view. The movement 
+  /// will follow a spline.
   ///
   /// @param sCenter  The SPICE name of the targets center.
   /// @param sFrame   The SPICE reference frame of the targets location.

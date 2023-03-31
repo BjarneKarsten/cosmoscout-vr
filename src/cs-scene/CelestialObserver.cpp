@@ -11,6 +11,7 @@
 #include "logger.hpp"
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 namespace cs::scene {
 
@@ -24,18 +25,13 @@ CelestialObserver::CelestialObserver(std::string const& sCenterName, std::string
 
 void CelestialObserver::updateMovementAnimation(double tTime) {
   if (mAnimationType == spline) {
-    //logger().info(tTime);
-    std::ofstream f;
-    std::ofstream f2;
-    f.open("plot3d.json", std::ios::out | std::ios::app);
-    f2.open("lookat.json", std::ios::out | std::ios::app);
-    //f2 << "\t\t" << speed << ",\n";
-    std::vector<double> pos = mPositionSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 4)).result();
-    mPosition = glm::dvec3(pos[1], pos[2], pos[3]); //mAnimatedPosition.get(tTime);
-    f << "\t\t[" << mPosition.x << ", " << mPosition.y << ", " << mPosition.z << "],\n";
-    std::vector<double> lA = mLookAtSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 2)).result();
-    f2 << "\t\t[" << lA[1] << ", " << lA[2] << ", " << lA[3] << "],\n";
-    std::vector<double> up = mUpSpline.bisect(easeInOut(tTime - mStartTime, mEndTime - mStartTime, 1)).result();
+    std::vector<double> pos = mPositionSpline.bisect(easeInOut(tTime - mStartTime, 
+      mEndTime - mStartTime, 4)).result();
+    mPosition = glm::dvec3(pos[1], pos[2], pos[3]);
+    std::vector<double> lA = mLookAtSpline.bisect(easeInOut(tTime - mStartTime, 
+      mEndTime - mStartTime, 2)).result();
+    std::vector<double> up = mUpSpline.bisect(easeInOut(tTime - mStartTime, 
+      mEndTime - mStartTime, 1)).result();
     glm::dvec3 z = -glm::normalize(glm::dvec3(lA[1], lA[2], lA[3]) - mPosition);
     glm::dvec3 x = -glm::normalize(glm::cross(z, glm::dvec3(up[1], up[2], up[3])));
     glm::dvec3 y = glm::normalize(glm::cross(z, x));
@@ -43,11 +39,7 @@ void CelestialObserver::updateMovementAnimation(double tTime) {
 
     if (mEndTime < tTime) {
       mAnimationType = none;
-      f  << "\t]\n}";
-      f2 << "\t]\n}";
     }
-    f.close();
-    f2.close();
   }
   else if(mAnimationType == animatedValue) {
     mPosition = mAnimatedPosition.get(tTime);
@@ -133,36 +125,19 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
       cs::scene::CelestialObject origin("Solar System Barycenter", "J2000");
       glm::dvec3 actPos = origin.getRelativePosition(dSimulationTime, 
         cs::scene::CelestialObject(getCenterName(), getFrameName()));
+      glm::dvec3 targetPos = origin.getRelativePosition(dSimulationTime, 
+        cs::scene::CelestialObject(sCenterName, sFrameName));
       glm::dvec3 startPos = origin.getRelativePosition(dSimulationTime, *this);
       glm::dquat startRot = origin.getRelativeRotation(dSimulationTime, *this);
-      glm::dvec3 startLookAt = startPos + startRot * glm::dvec3(0,0,-glm::length(startPos - actPos)
-        * 100);
+      glm::dvec3 startLookAt = startPos + startRot * glm::dvec3(0,0,-std::sqrt(glm::length(targetPos
+        - actPos) * glm::length(startPos - actPos)));
       glm::dvec3 startUp = startRot * glm::dvec3(0,1,0);
-      std::ofstream f;
-      f.open("lookat.json", std::ios::out | std::ios::app);
-      f << "\t\"startLA\" : [" << startLookAt.x << ", " << startLookAt.y << ", " << startLookAt.z << "],\n"
-        << "\t\"lookats\" : [\n";
-      f.close();
+
       setCenterName("Solar System Barycenter");
       setFrameName("J2000");
 
-      /*double cosTheta = glm::dot(startRot, rotation);
-
-      // If cosTheta < 0, the interpolation will take the long way around the sphere.
-      // To fix this, one quat must be negated.
-      if (cosTheta < 0.0) {
-        startRot = -startRot;
-      }*/
-
-      setRotation(startRot);
-      setPosition(startPos);
-
       std::vector<double> positions;
-      /*positions.push_back(-0.5 * (mEndTime - mStartTime));
-      positions.push_back(actPos.x);
-      positions.push_back(actPos.y);
-      positions.push_back(actPos.z);*/
-      positions.push_back(0/*dRealStartTime*/);
+      positions.push_back(0);
       positions.push_back(startPos.x);
       positions.push_back(startPos.y);
       positions.push_back(startPos.z);
@@ -175,7 +150,7 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
       mPositionSpline = tinyspline::BSpline::interpolateCubicNatural(positions, 4);
 
       std::vector<double> lookAts;
-      lookAts.push_back(0/*dRealStartTime*/);
+      lookAts.push_back(0);
       lookAts.push_back(startLookAt.x);
       lookAts.push_back(startLookAt.y);
       lookAts.push_back(startLookAt.z);
@@ -188,7 +163,7 @@ void CelestialObserver::moveToSpline(std::string const& sCenterName, std::string
       mLookAtSpline = tinyspline::BSpline::interpolateCatmullRom(lookAts, 4);
 
       std::vector<double> ups;
-      ups.push_back(0/*dRealStartTime*/);
+      ups.push_back(0);
       ups.push_back(startUp.x);
       ups.push_back(startUp.y);
       ups.push_back(startUp.z);

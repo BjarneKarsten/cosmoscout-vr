@@ -55,10 +55,11 @@ class CS_SCENE_EXPORT CelestialObserver : public CelestialAnchor {
   /// @param sCenterName      The SPICE name of the targets center.
   /// @param sFrameName       The SPICE reference frame of the targets location.
   /// @param positionControl  The vector listing the control points for the movement together with
-  ///                         corresponding real world time stamps.
+  ///                         corresponding time stamps, beginning with 0.
   /// @param lookAtControl    The vector listing the control points towards which the camera should 
-  ///                         point, together with corresponding real world time stamps.
-  /// @param upControl        The vector listing up vectors together with corresponding time stamps.
+  ///                         point, together with corresponding time stamps, beginning with 0.
+  /// @param upControl        The vector listing up vectors together with corresponding time stamps,
+  ///                         beginning with 0.
   /// @param dSimulationTime  The current time of the simulation in Barycentric Dynamical Time.
   /// @param dRealStartTime   The time in the real world, when the animation should start, in TDB.    
   void moveToSpline(std::string const& sCenterName, std::string const& sFrameName, 
